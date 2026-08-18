@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Elsewhere — a shared place for Brad and Sam to explore careers, places, and possibilities." />
+  <title>Elsewhere — We get to choose.</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <aside class="sidebar" aria-label="Elsewhere navigation">
+    <div class="brand">
+      <div class="brand-mark-shell" aria-hidden="true">
+        <img src="assets/elsewhere-mark.png" class="brand-mark-image" alt="" />
+      </div>
+      <div>
+        <div class="brand-name">Elsewhere</div>
+        <div class="brand-tagline">We get to choose.</div>
+      </div>
+    </div>
+
+    <nav class="nav" id="mainNav">
+      <button class="nav-link active" data-view="home" type="button"><span>⌂</span> Home</button>
+      <button class="nav-link" data-view="explore" type="button"><span>⌕</span> Explore</button>
+      <button class="nav-link" data-view="possibilities" type="button"><span>✦</span> Possibilities</button>
+      <button class="nav-link" data-view="places" type="button"><span>⌖</span> Places</button>
+      <button class="nav-link" data-view="learning" type="button"><span>≋</span> What we're learning</button>
+      <button class="nav-link" data-view="backup" type="button"><span>↥</span> Backup</button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="mode-card">
+        <span class="status-dot" id="modeDot"></span>
+        <div>
+          <strong id="modeLabel">Starting…</strong>
+          <small id="modeHint">Checking workspace</small>
+        </div>
+      </div>
+      <button id="signOutBtn" class="text-button hidden" type="button">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="app-shell">
+    <header class="topbar">
+      <button id="mobileMenuBtn" class="mobile-menu" type="button" aria-label="Open navigation">☰</button>
+      <div class="topbar-copy">
+        <span class="eyebrow">Brad + Sam</span>
+        <span id="workspaceName" class="workspace-name">Elsewhere</span>
+      </div>
+      <div class="topbar-actions">
+        <label id="localPersonWrap" class="local-person hidden">
+          <span>Exploring as</span>
+          <select id="localPersonSelect">
+            <option value="Brad">Brad</option>
+            <option value="Sam">Sam</option>
+          </select>
+        </label>
+        <div class="identity" id="identityChip">
+          <span class="identity-avatar" id="identityAvatar">?</span>
+          <div>
+            <strong id="identityName">Guest</strong>
+            <small id="identityDetail">Local preview</small>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="view active" data-view-panel="home">
+      <div class="hero">
+        <div class="hero-copy">
+          <img src="assets/elsewhere-logo.png" class="hero-logo" alt="Elsewhere" />
+          <h1>We get to choose.</h1>
+          <p>We don't need to know where we're going. We can look around, follow what interests us, and see what starts to feel like ours.</p>
+          <div class="hero-actions">
+            <button class="primary" data-jump="explore" type="button">See what's out there</button>
+            <button class="secondary" id="randomThreadHome" type="button">Yeah, nah, yeah…</button>
+          </div>
+        </div>
+        <div class="hero-compass">
+          <div class="compass-ring" aria-hidden="true"><span>N</span><span class="compass-center">✦</span></div>
+          <div class="hero-cat-wrap" title="Nadja ‘Baby’ has inspected this possibility.">
+            <img src="assets/nadja.jpg" class="cat-easter hero-cat" alt="Illustrated Nadja ‘Baby’, the family’s dilute tortie cat" />
+          </div>
+          <p>Possibility</p>
+        </div>
+      </div>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">What sounds interesting today?</span>
+            <h2>Pick a door. No commitment required.</h2>
+          </div>
+        </div>
+
+        <div class="portal-grid">
+          <button class="portal-card brad" data-explore-person="Brad" type="button">
+            <span class="portal-icon">✦</span>
+            <strong>Brad</strong>
+            <span>Follow architecture, information systems, applied AI, and the bridges from deep technical experience.</span>
+          </button>
+          <button class="portal-card sam" data-explore-person="Sam" type="button">
+            <span class="portal-icon">❧</span>
+            <strong>Sam</strong>
+            <span>Find meaningful work and communities around celebrancy, death care, green burial, hospice, and transition.</span>
+          </button>
+          <button class="portal-card us" data-explore-person="Us" type="button">
+            <span class="portal-icon">⌂</span>
+            <strong>Us</strong>
+            <span>Explore homes, land, community, seasons, recreation, access, and places that might feel like ours.</span>
+          </button>
+          <button class="portal-card thread" id="followThreadBtn" type="button">
+            <span class="portal-icon">∞</span>
+            <strong>Follow a thread</strong>
+            <span>Let Elsewhere combine a person, a theme, and a place when we don't know where to start.</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading split">
+          <div>
+            <span class="eyebrow">Signals</span>
+            <h2>What's starting to gather?</h2>
+          </div>
+          <button class="text-button" data-jump="places" type="button">See all places →</button>
+        </div>
+        <div id="homeSignals" class="signal-grid"></div>
+      </section>
+
+      <section class="section-block two-up">
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Recently saved</span>
+              <h3>Possibilities</h3>
+            </div>
+            <button class="text-button" data-jump="possibilities" type="button">See all →</button>
+          </div>
+          <div id="homeRecent" class="compact-list"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Shared notebook</span>
+              <h3>What we're learning</h3>
+            </div>
+            <button class="text-button" data-jump="learning" type="button">Open notes →</button>
+          </div>
+          <div id="homeLearning" class="compact-list"></div>
+        </article>
+      </section>
+    </section>
+
+    <section class="view" data-view-panel="explore">
+      <div class="page-heading has-cat">
+        <img src="assets/perez.jpg" class="cat-easter page-cat" alt="Illustrated Perez, a short-haired black cat" title="Perez is thinking very hard about this." />
+        <span class="eyebrow">Search studio</span>
+        <h1>Explore without rebuilding the search every time.</h1>
+        <p>Choose whose thread we're following, what kind of possibility, and where. Elsewhere builds several useful searches from the combination.</p>
+      </div>
+
+      <section class="panel search-studio">
+        <div class="search-controls">
+          <label>
+            <span>Whose thread?</span>
+            <select id="searchPerson"></select>
+          </label>
+          <label>
+            <span>What kind?</span>
+            <select id="searchLens"></select>
+          </label>
+          <label>
+            <span>Where?</span>
+            <select id="searchRegion"></select>
+          </label>
+        </div>
+        <div class="search-toolbar">
+          <button id="buildSearchBtn" class="primary" type="button">Build searches</button>
+          <button id="randomThreadBtn" class="secondary" type="button">Follow a random thread</button>
+        </div>
+        <div id="searchSummary" class="search-summary"></div>
+        <div id="searchResults" class="search-results"></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Lenses</span>
+            <h2 id="lensHeading">Brad's paths</h2>
+          </div>
+        </div>
+        <div id="lensCards" class="lens-grid"></div>
+      </section>
+    </section>
+
+    <section class="view" data-view-panel="possibilities">
+      <div class="page-heading with-action">
+        <div class="heading-copy has-cat">
+          <img src="assets/banana.jpg" class="cat-easter page-cat" alt="Illustrated Banana, a short-haired black cat with a blue banana collar" title="Banana (Nandor the Relentless) approves of collecting possibilities." />
+          <span class="eyebrow">Saved possibilities</span>
+          <h1>Keep the things that make either of you look twice.</h1>
+          <p>Jobs, employers, places, properties, organizations, articles, courses, scouting ideas—anything can become evidence later.</p>
+        </div>
+        <button id="openAddPossibility" class="primary" type="button">+ Save possibility</button>
+      </div>
+
+      <section class="panel filter-panel">
+        <div class="filter-grid">
+          <label><span>For</span><select id="filterAudience"><option value="all">Everyone</option><option>Brad</option><option>Sam</option><option>Both</option></select></label>
+          <label><span>Type</span><select id="filterType"><option value="all">All types</option></select></label>
+          <label><span>Place</span><select id="filterRegion"><option value="all">All places</option></select></label>
+          <label><span>Search</span><input id="filterText" type="search" placeholder="title, note, tag…" /></label>
+        </div>
+      </section>
+
+      <div id="possibilityList" class="possibility-grid"></div>
+    </section>
+
+    <section class="view" data-view-panel="places">
+      <div class="page-heading has-cat">
+        <img src="assets/henry.jpg" class="cat-easter page-cat" alt="Illustrated Henry, the older orange cat with his docked ear" title="Henry has seen enough moves in his time. He would like the good chair packed." />
+        <span class="eyebrow">Place threads</span>
+        <h1>Where are the signals starting to overlap?</h1>
+        <p>No composite score. Just visible evidence: Brad possibilities, Sam possibilities, life possibilities, reactions, and what keeps resurfacing.</p>
+      </div>
+      <div id="placesGrid" class="places-grid"></div>
+    </section>
+
+    <section class="view" data-view-panel="learning">
+      <div class="page-heading">
+        <span class="eyebrow">Shared field notes</span>
+        <h1>What are we learning?</h1>
+        <p>Capture patterns, surprises, questions, recurring vocabulary, or the simple thought that a place is starting to feel interesting.</p>
+      </div>
+
+      <section class="panel note-compose">
+        <textarea id="observationBody" placeholder="Example: Southern Maine keeps producing both Brad and Sam signals. Housing deserves a deeper pass next."></textarea>
+        <div class="note-compose-row">
+          <select id="observationRegion"><option value="">No place attached</option></select>
+          <input id="observationTags" placeholder="tags, comma separated" />
+          <button id="addObservation" class="primary" type="button">Add note</button>
+        </div>
+      </section>
+      <div id="observationList" class="notes-grid"></div>
+    </section>
+
+    <section class="view" data-view-panel="backup">
+      <div class="page-heading">
+        <span class="eyebrow">Portability</span>
+        <h1>Elsewhere should never own the research.</h1>
+        <p>Export the workspace whenever you want. JSON preserves the full structure; CSV is convenient for inspection and analysis.</p>
+      </div>
+
+      <section class="backup-grid">
+        <article class="panel">
+          <span class="eyebrow">Backup</span>
+          <h3>Export workspace</h3>
+          <p>Download possibilities, reactions, observations, place keys, and workspace metadata.</p>
+          <div class="button-stack">
+            <button id="exportJson" class="primary" type="button">Export JSON</button>
+            <button id="exportCsv" class="secondary" type="button">Export possibilities CSV</button>
+          </div>
+        </article>
+
+        <article class="panel" id="workspacePanel">
+          <span class="eyebrow">Shared workspace</span>
+          <h3>Brad + Sam</h3>
+          <div id="workspaceDetails"></div>
+        </article>
+
+        <article class="panel danger-zone" id="localResetPanel">
+          <span class="eyebrow">Local preview only</span>
+          <h3>Reset local data</h3>
+          <p>This appears only in local demo mode. It clears this browser's Elsewhere preview data.</p>
+          <button id="resetLocal" class="danger" type="button">Reset local preview</button>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <div class="mobile-nav" id="mobileNav" aria-label="Mobile navigation">
+    <button data-view="home" class="active" type="button">⌂<span>Home</span></button>
+    <button data-view="explore" type="button">⌕<span>Explore</span></button>
+    <button data-view="possibilities" type="button">✦<span>Saved</span></button>
+    <button data-view="places" type="button">⌖<span>Places</span></button>
+    <button data-view="learning" type="button">≋<span>Notes</span></button>
+    <button data-view="backup" type="button">↥<span>Backup</span></button>
+  </div>
+
+  <dialog id="possibilityDialog" class="modal">
+    <form method="dialog" class="modal-card" id="possibilityForm">
+      <div class="modal-heading">
+        <div>
+          <span class="eyebrow">Save what caught your attention</span>
+          <h2>New possibility</h2>
+        </div>
+        <button class="icon-button" value="cancel" type="submit" aria-label="Close">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label><span>Type</span><select id="possibilityType" required></select></label>
+        <label><span>For</span><select id="possibilityAudience" required><option>Brad</option><option>Sam</option><option>Both</option></select></label>
+        <label class="span-2"><span>Name / title</span><input id="possibilityTitle" required placeholder="What did you find?" /></label>
+        <label class="span-2"><span>URL <small>(optional)</small></span><input id="possibilityUrl" type="url" placeholder="https://…" /></label>
+        <label><span>Region</span><select id="possibilityRegion"><option value="">No region yet</option></select></label>
+        <label><span>Location detail</span><input id="possibilityLocation" placeholder="Portland, ME / remote / Gray, ME…" /></label>
+        <label><span>Status</span><select id="possibilityStatus"><option>Interesting</option><option>Research</option><option>Apply</option><option>Visit</option><option>Discuss</option><option>Favorite</option><option>Probably not</option></select></label>
+        <label><span>Tags</span><input id="possibilityTags" placeholder="AI, green burial, acreage…" /></label>
+        <label class="span-2"><span>Why is it interesting?</span><textarea id="possibilityWhy" placeholder="The signal worth remembering."></textarea></label>
+        <label class="span-2"><span>Notes</span><textarea id="possibilityNotes" placeholder="Anything useful for later."></textarea></label>
+      </div>
+
+      <div class="modal-actions">
+        <button class="secondary" value="cancel" type="submit">Cancel</button>
+        <button id="savePossibilityBtn" class="primary" value="default" type="submit">Save possibility</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="authDialog" class="modal auth-modal">
+    <div class="modal-card auth-card">
+      <div class="auth-brand">
+        <img src="assets/elsewhere-logo.png" class="auth-logo" alt="Elsewhere" />
+        <h2>We get to choose.</h2>
+      </div>
+      <p class="auth-intro">Sign in to the shared workspace. If this is your first visit, create your account first.</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth-mode="signin" type="button">Sign in</button>
+        <button class="auth-tab" data-auth-mode="signup" type="button">Create account</button>
+      </div>
+      <form id="authForm" class="auth-form">
+        <label id="authNameWrap" class="hidden"><span>Your name</span><input id="authName" autocomplete="name" placeholder="Brad or Sam" /></label>
+        <label><span>Email</span><input id="authEmail" type="email" autocomplete="email" required /></label>
+        <label><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" minlength="8" required /></label>
+        <button id="authSubmit" class="primary" type="submit">Sign in</button>
+      </form>
+      <p id="authMessage" class="form-message"></p>
+    </div>
+  </dialog>
+
+  <dialog id="workspaceDialog" class="modal auth-modal">
+    <div class="modal-card auth-card">
+      <div class="auth-brand">
+        <img src="assets/elsewhere-logo.png" class="auth-logo" alt="Elsewhere" />
+        <div>
+          <span class="eyebrow">One last step</span>
+          <h2>Open the shared Elsewhere.</h2>
+        </div>
+      </div>
+      <div class="workspace-choice-grid">
+        <div class="choice-box">
+          <h3>Start it</h3>
+          <p>The first person creates the shared workspace and gets a join code for the other.</p>
+          <button id="createWorkspaceBtn" class="primary" type="button">Create Elsewhere</button>
+        </div>
+        <div class="choice-box">
+          <h3>Join it</h3>
+          <p>Enter the code from the person who created the workspace.</p>
+          <input id="joinCodeInput" placeholder="JOIN CODE" maxlength="12" />
+          <button id="joinWorkspaceBtn" class="secondary" type="button">Join workspace</button>
+        </div>
+      </div>
+      <p id="workspaceMessage" class="form-message"></p>
+    </div>
+  </dialog>
+
+  <template id="emptyTemplate">
+    <div class="empty-state">
+      <span>✦</span>
+      <strong>Nothing here yet.</strong>
+      <p>That's okay. Elsewhere gets useful by collecting small signals over time.</p>
+    </div>
+  </template>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
