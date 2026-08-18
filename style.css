@@ -474,12 +474,14 @@ textarea { min-height: 110px; resize: vertical; }
   height: 50px;
   object-fit: contain;
 }
-
 .hero-logo {
   display: block;
-  width: min(440px, 78%);
+  width: min(560px, 82%);
   height: auto;
-  margin: 0 0 4px;
+
+  margin-top: -10px;
+  margin-left: -8px;
+  margin-bottom: 28px;
 }
 
 /* The first pass was intentionally dramatic. Pull the display hierarchy
