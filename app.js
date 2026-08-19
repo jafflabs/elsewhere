@@ -1207,7 +1207,6 @@
     qs("#searchPerson").addEventListener("change", () => { updateLensSelect(); buildSearches(); });
     qs("#searchLens").addEventListener("change", () => { state.selectedLensKey = qs("#searchLens").value; buildSearches(); });
     qs("#searchRegion").addEventListener("change", buildSearches);
-    qs("#buildSearchBtn").addEventListener("click", buildSearches);
     qs("#randomThreadBtn").addEventListener("click", randomThread);
     qs("#randomThreadHome").addEventListener("click", randomThread);
     qs("#followThreadBtn").addEventListener("click", randomThread);
