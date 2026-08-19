@@ -376,10 +376,10 @@
     <form method="dialog" class="modal-card" id="mapPinForm">
       <div class="modal-heading">
         <div>
-          <span class="eyebrow">Drop a pin</span>
+          <span class="eyebrow">Stab in a pin!</span>
           <h2>What caught our eye here?</h2>
         </div>
-        <button class="icon-button" value="cancel" type="submit" aria-label="Close">×</button>
+        <button class="icon-button" value="cancel" type="submit" formnovalidate aria-label="Close">×</button>
       </div>
 
       <p class="map-pin-coordinates" id="mapPinCoordinates"></p>
@@ -394,7 +394,7 @@
       </div>
 
       <div class="modal-actions">
-        <button class="secondary" value="cancel" type="submit">Cancel</button>
+        <button class="secondary" value="cancel" type="submit" formnovalidate>Cancel</button>
         <button class="primary" value="default" type="submit">Put a pin in it</button>
       </div>
     </form>
