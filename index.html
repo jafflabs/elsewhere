@@ -6,6 +6,9 @@
   <meta name="description" content="Elsewhere — a shared place for Brad and Sam to explore careers, places, and possibilities." />
   <title>Elsewhere — We get to choose.</title>
   <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -27,6 +30,7 @@
       <button class="nav-link" data-view="explore" type="button"><span>⌕</span> Explore</button>
       <button class="nav-link" data-view="possibilities" type="button"><span>✦</span> Possibilities</button>
       <button class="nav-link" data-view="places" type="button"><span>⌖</span> Places</button>
+      <button class="nav-link" data-view="map" type="button"><span>⊹</span> Map</button>
       <button class="nav-link" data-view="learning" type="button"><span>≋</span> What we're learning</button>
       <button class="nav-link" data-view="backup" type="button"><span>↥</span> Backup</button>
     </nav>
@@ -230,6 +234,52 @@
       <div id="placesGrid" class="places-grid"></div>
     </section>
 
+    <section class="view" data-view-panel="map">
+      <div class="page-heading map-heading">
+        <span class="eyebrow">Shared pinboard</span>
+        <h1>Put a pin in it.</h1>
+        <p>Click anywhere that catches your attention. The pin stays here for both of us, even if all we know right now is “huh… maybe.”</p>
+      </div>
+
+      <div class="map-layout">
+        <section class="map-board" aria-label="Elsewhere Northeast pinboard map">
+          <div class="map-board-topline">
+            <div>
+              <strong>Our Elsewhere map</strong>
+              <span>Click the map to drop a pin. Drag and zoom as much as you want.</span>
+            </div>
+            <span id="mapPinCount" class="map-pin-count">0 pins</span>
+          </div>
+          <div class="map-cork-frame">
+            <div id="elsewhereMap" aria-label="Interactive map of the Northeast United States"></div>
+          </div>
+        </section>
+
+        <aside class="map-side">
+          <section class="panel map-crew-panel">
+            <span class="eyebrow">Map crew</span>
+            <h3>The entire relocation committee</h3>
+            <div class="map-crew" aria-label="Henry, Perez, Banana and Nadja">
+              <figure title="Henry: senior comfort consultant."><img src="assets/henry2.png" loading="lazy" alt="Illustrated Henry" /><figcaption>Henry</figcaption></figure>
+              <figure title="Perez: cautious regional analyst."><img src="assets/perez2.png" loading="lazy" alt="Illustrated Perez" /><figcaption>Perez</figcaption></figure>
+              <figure title="Banana: relentlessly pro-adventure."><img src="assets/banana2.png" loading="lazy" alt="Illustrated Banana" /><figcaption>Banana</figcaption></figure>
+              <figure title="Nadja ‘Baby’: first to investigate everything."><img src="assets/nadja2.png" loading="lazy" alt="Illustrated Nadja Baby" /><figcaption>Baby</figcaption></figure>
+            </div>
+          </section>
+
+          <section class="panel map-list-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">Pinned so far</span>
+                <h3>Places that made us look twice</h3>
+              </div>
+            </div>
+            <div id="mapPinList" class="map-pin-list"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+
     <section class="view" data-view-panel="learning">
       <div class="page-heading">
         <span class="eyebrow">Shared field notes</span>
@@ -259,7 +309,7 @@
         <article class="panel">
           <span class="eyebrow">Backup</span>
           <h3>Export workspace</h3>
-          <p>Download possibilities, reactions, observations, place keys, and workspace metadata.</p>
+          <p>Download possibilities, reactions, observations, map pins, place keys, and workspace metadata.</p>
           <div class="button-stack">
             <button id="exportJson" class="primary" type="button">Export JSON</button>
             <button id="exportCsv" class="secondary" type="button">Export possibilities CSV</button>
@@ -287,6 +337,7 @@
     <button data-view="explore" type="button">⌕<span>Explore</span></button>
     <button data-view="possibilities" type="button">✦<span>Saved</span></button>
     <button data-view="places" type="button">⌖<span>Places</span></button>
+    <button data-view="map" type="button">⊹<span>Map</span></button>
     <button data-view="learning" type="button">≋<span>Notes</span></button>
     <button data-view="backup" type="button">↥<span>Backup</span></button>
   </div>
@@ -317,6 +368,34 @@
       <div class="modal-actions">
         <button class="secondary" value="cancel" type="submit">Cancel</button>
         <button id="savePossibilityBtn" class="primary" value="default" type="submit">Save possibility</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="mapPinDialog" class="modal map-pin-modal">
+    <form method="dialog" class="modal-card" id="mapPinForm">
+      <div class="modal-heading">
+        <div>
+          <span class="eyebrow">Drop a pin</span>
+          <h2>What caught our eye here?</h2>
+        </div>
+        <button class="icon-button" value="cancel" type="submit" aria-label="Close">×</button>
+      </div>
+
+      <p class="map-pin-coordinates" id="mapPinCoordinates"></p>
+      <input id="mapPinLatitude" type="hidden" />
+      <input id="mapPinLongitude" type="hidden" />
+
+      <div class="form-grid">
+        <label class="span-2"><span>Place / pin name</span><input id="mapPinTitle" required placeholder="Brattleboro, VT / that lake / somewhere near Portland…" /></label>
+        <label><span>For</span><select id="mapPinAudience" required><option>Both</option><option>Brad</option><option>Sam</option></select></label>
+        <label><span>Region <small>(optional)</small></span><select id="mapPinRegion"><option value="">No region attached</option></select></label>
+        <label class="span-2"><span>Why did we pin it? <small>(optional)</small></span><textarea id="mapPinNotes" placeholder="Cute town, job nearby, house we saw, worth a scouting stop…"></textarea></label>
+      </div>
+
+      <div class="modal-actions">
+        <button class="secondary" value="cancel" type="submit">Cancel</button>
+        <button class="primary" value="default" type="submit">Put a pin in it</button>
       </div>
     </form>
   </dialog>
@@ -376,6 +455,9 @@
     </div>
   </template>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>

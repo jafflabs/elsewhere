@@ -19,6 +19,7 @@
     possibilities: [],
     reactions: [],
     observations: [],
+    mapPins: [],
     localPerson: localStorage.getItem(LOCAL_PERSON_KEY) || "Brad",
     selectedSearchPerson: "Brad",
     selectedLensKey: null,
@@ -129,13 +130,16 @@
         ],
         possibilities: [],
         reactions: [],
-        observations: []
+        observations: [],
+        map_pins: []
       };
     }
 
     read() {
       try {
-        return JSON.parse(localStorage.getItem(LOCAL_KEY)) || this.fresh();
+        const parsed = JSON.parse(localStorage.getItem(LOCAL_KEY));
+        if (!parsed) return this.fresh();
+        return { ...this.fresh(), ...parsed, map_pins: Array.isArray(parsed.map_pins) ? parsed.map_pins : [] };
       } catch {
         return this.fresh();
       }
@@ -176,6 +180,18 @@
 
     async deleteObservation(id) {
       this.state.observations = this.state.observations.filter(x => x.id !== id);
+      this.write();
+    }
+
+    async addMapPin(record) {
+      const saved = { ...record, id: uid(), created_by: currentUserId(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      this.state.map_pins.unshift(saved);
+      this.write();
+      return saved;
+    }
+
+    async deleteMapPin(id) {
+      this.state.map_pins = this.state.map_pins.filter(x => x.id !== id);
       this.write();
     }
 
@@ -248,18 +264,20 @@
     }
 
     async load(workspaceId) {
-      const [membersRes, possibilitiesRes, reactionsRes, observationsRes] = await Promise.all([
+      const [membersRes, possibilitiesRes, reactionsRes, observationsRes, mapPinsRes] = await Promise.all([
         this.client.from("workspace_members").select("user_id,role,profiles(display_name)").eq("workspace_id", workspaceId),
         this.client.from("possibilities").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
         this.client.from("reactions").select("*").eq("workspace_id", workspaceId),
-        this.client.from("observations").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false })
+        this.client.from("observations").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
+        this.client.from("map_pins").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false })
       ]);
-      [membersRes, possibilitiesRes, reactionsRes, observationsRes].forEach(result => { if (result.error) throw result.error; });
+      [membersRes, possibilitiesRes, reactionsRes, observationsRes, mapPinsRes].forEach(result => { if (result.error) throw result.error; });
       return {
         members: membersRes.data.map(m => ({ user_id: m.user_id, role: m.role, display_name: m.profiles?.display_name || "Member" })),
         possibilities: possibilitiesRes.data || [],
         reactions: reactionsRes.data || [],
-        observations: observationsRes.data || []
+        observations: observationsRes.data || [],
+        map_pins: mapPinsRes.data || []
       };
     }
 
@@ -298,9 +316,24 @@
       const { error } = await this.client.from("observations").delete().eq("id", id);
       if (error) throw error;
     }
+
+    async addMapPin(record) {
+      const payload = { ...record, workspace_id: state.workspace.id, created_by: state.user.id };
+      const { data, error } = await this.client.from("map_pins").insert(payload).select().single();
+      if (error) throw error;
+      return data;
+    }
+
+    async deleteMapPin(id) {
+      const { error } = await this.client.from("map_pins").delete().eq("id", id);
+      if (error) throw error;
+    }
   }
 
   let store;
+  let elsewhereMap = null;
+  let mapPinLayer = null;
+  const mapMarkers = new Map();
 
   function supabaseConfigured() {
     const { url, publishableKey } = CONFIG.supabase || {};
@@ -349,6 +382,7 @@
     state.possibilities = data.possibilities;
     state.reactions = data.reactions;
     state.observations = data.observations;
+    state.mapPins = data.map_pins || [];
     updateModeUI();
   }
 
@@ -403,6 +437,7 @@
     state.possibilities = data.possibilities;
     state.reactions = data.reactions;
     state.observations = data.observations;
+    state.mapPins = data.map_pins || [];
   }
 
   function clearSharedState() {
@@ -413,6 +448,7 @@
     state.possibilities = [];
     state.reactions = [];
     state.observations = [];
+    state.mapPins = [];
     updateModeUI();
   }
 
@@ -431,6 +467,7 @@
     qs("#filterRegion").insertAdjacentHTML("beforeend", regionOptions);
     qs("#possibilityRegion").insertAdjacentHTML("beforeend", regionOptions);
     qs("#observationRegion").insertAdjacentHTML("beforeend", regionOptions);
+    qs("#mapPinRegion").insertAdjacentHTML("beforeend", regionOptions);
     qs("#possibilityType").innerHTML = TYPES.map(x => `<option>${escapeHtml(x)}</option>`).join("");
     qs("#filterType").insertAdjacentHTML("beforeend", TYPES.map(x => `<option>${escapeHtml(x)}</option>`).join(""));
     updateLensSelect();
@@ -447,11 +484,12 @@
   }
 
   function navigate(view, scroll = true) {
-    const valid = ["home", "explore", "possibilities", "places", "learning", "backup"];
+    const valid = ["home", "explore", "possibilities", "places", "map", "learning", "backup"];
     if (!valid.includes(view)) view = "home";
     qsa("[data-view-panel]").forEach(el => el.classList.toggle("active", el.dataset.viewPanel === view));
     qsa("[data-view]").forEach(el => el.classList.toggle("active", el.dataset.view === view));
     localStorage.setItem(LAST_VIEW_KEY, view);
+    if (view === "map") setTimeout(ensureMap, 0);
     if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -721,6 +759,142 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Shared map / pinboard
+  // ---------------------------------------------------------------------------
+
+  function mapPinIcon(audience) {
+    const tone = audience === "Brad" ? "brad" : audience === "Sam" ? "sam" : "both";
+    return window.L.divIcon({
+      className: "elsewhere-pin-icon",
+      html: `<div class="pushpin ${tone}"><span class="pushpin-head">✦</span><span class="pushpin-needle"></span></div>`,
+      iconSize: [38, 48],
+      iconAnchor: [19, 46],
+      popupAnchor: [0, -42]
+    });
+  }
+
+  function pinPopupHtml(pin) {
+    const region = regionByKey(pin.region_key);
+    return `
+      <div class="map-popup">
+        <strong>${escapeHtml(pin.title)}</strong>
+        <span>${escapeHtml(pin.audience)}${region ? ` · ${escapeHtml(region.name)}` : ""}</span>
+        ${pin.notes ? `<p>${escapeHtml(pin.notes)}</p>` : ""}
+        <small>Pinned by ${escapeHtml(memberName(pin.created_by))}</small>
+        <button class="delete-mini" data-delete-map-pin="${escapeHtml(pin.id)}" type="button">Remove pin</button>
+      </div>`;
+  }
+
+  function ensureMap() {
+    const container = qs("#elsewhereMap");
+    if (!container || !window.L) {
+      if (container) container.innerHTML = `<div class="map-unavailable">The map library didn't load. Refresh the page and try again.</div>`;
+      return;
+    }
+
+    if (!elsewhereMap) {
+      elsewhereMap = window.L.map("elsewhereMap", { zoomControl: true, zoomSnap: .5 }).setView([43.35, -73.4], 5);
+      window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(elsewhereMap);
+      mapPinLayer = window.L.layerGroup().addTo(elsewhereMap);
+      elsewhereMap.on("click", event => openMapPinDialog(event.latlng));
+    }
+
+    requestAnimationFrame(() => elsewhereMap.invalidateSize());
+    renderMapPins();
+  }
+
+  function openMapPinDialog(latlng) {
+    qs("#mapPinForm").reset();
+    qs("#mapPinLatitude").value = latlng.lat.toFixed(6);
+    qs("#mapPinLongitude").value = latlng.lng.toFixed(6);
+    qs("#mapPinCoordinates").textContent = `${latlng.lat.toFixed(3)}, ${latlng.lng.toFixed(3)}`;
+    qs("#mapPinAudience").value = "Both";
+    const selectedRegion = state.selectedRegionKey && state.selectedRegionKey !== "new-england" ? state.selectedRegionKey : "";
+    qs("#mapPinRegion").value = selectedRegion;
+    qs("#mapPinDialog").showModal();
+    setTimeout(() => qs("#mapPinTitle").focus(), 0);
+  }
+
+  async function saveMapPinFromForm() {
+    const record = {
+      title: qs("#mapPinTitle").value.trim(),
+      audience: qs("#mapPinAudience").value,
+      region_key: qs("#mapPinRegion").value || null,
+      notes: qs("#mapPinNotes").value.trim(),
+      latitude: Number(qs("#mapPinLatitude").value),
+      longitude: Number(qs("#mapPinLongitude").value)
+    };
+    if (!record.title || !Number.isFinite(record.latitude) || !Number.isFinite(record.longitude)) return;
+
+    const saved = await store.addMapPin(record);
+    state.mapPins.unshift(saved);
+    if (state.mode === "local") state.mapPins = (await store.load()).map_pins || [];
+    qs("#mapPinDialog").close();
+    renderMapPins();
+    showToast("Pin dropped.");
+  }
+
+  async function deleteMapPin(id) {
+    const pin = state.mapPins.find(x => x.id === id);
+    if (!pin) return;
+    if (!confirm(`Remove the pin for “${pin.title}”?`)) return;
+    await store.deleteMapPin(id);
+    state.mapPins = state.mapPins.filter(x => x.id !== id);
+    renderMapPins();
+    showToast("Pin removed.");
+  }
+
+  function focusMapPin(id) {
+    const pin = state.mapPins.find(x => x.id === id);
+    if (!pin) return;
+    navigate("map", false);
+    ensureMap();
+    elsewhereMap.setView([Number(pin.latitude), Number(pin.longitude)], Math.max(elsewhereMap.getZoom(), 8));
+    const marker = mapMarkers.get(id);
+    if (marker) marker.openPopup();
+  }
+
+  function renderMapPins() {
+    const list = qs("#mapPinList");
+    const count = qs("#mapPinCount");
+    if (count) count.textContent = `${state.mapPins.length} pin${state.mapPins.length === 1 ? "" : "s"}`;
+
+    if (list) {
+      if (!state.mapPins.length) {
+        emptyState(list, "The board is blank on purpose. Click the map when somewhere makes either of you curious.");
+      } else {
+        list.innerHTML = state.mapPins.map(pin => {
+          const region = regionByKey(pin.region_key);
+          return `
+            <article class="map-pin-item">
+              <button class="map-pin-focus" data-map-pin-focus="${escapeHtml(pin.id)}" type="button">
+                <span class="map-pin-dot ${pin.audience === "Brad" ? "brad" : pin.audience === "Sam" ? "sam" : "both"}"></span>
+                <span><strong>${escapeHtml(pin.title)}</strong><small>${escapeHtml(pin.audience)}${region ? ` · ${escapeHtml(region.name)}` : ""}</small></span>
+              </button>
+              <button class="delete-mini" data-delete-map-pin="${escapeHtml(pin.id)}" type="button">Remove</button>
+            </article>`;
+        }).join("");
+      }
+    }
+
+    if (!elsewhereMap || !mapPinLayer) return;
+    mapPinLayer.clearLayers();
+    mapMarkers.clear();
+    state.mapPins.forEach(pin => {
+      const lat = Number(pin.latitude);
+      const lng = Number(pin.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const marker = window.L.marker([lat, lng], { icon: mapPinIcon(pin.audience), title: pin.title })
+        .bindPopup(pinPopupHtml(pin), { maxWidth: 280 })
+        .addTo(mapPinLayer);
+      mapMarkers.set(pin.id, marker);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Observations
   // ---------------------------------------------------------------------------
 
@@ -833,7 +1007,8 @@
       members: state.members.map(m => ({ user_id: m.user_id, display_name: m.display_name, role: m.role })),
       possibilities: state.possibilities,
       reactions: state.reactions,
-      observations: state.observations
+      observations: state.observations,
+      map_pins: state.mapPins
     };
   }
 
@@ -871,6 +1046,7 @@
     renderHome();
     renderPossibilities();
     renderPlaces();
+    renderMapPins();
     renderObservations();
     renderWorkspace();
     renderLensCards();
@@ -1014,6 +1190,12 @@
       const deleteO = event.target.closest("[data-delete-observation]");
       if (deleteO) { await deleteObservation(deleteO.dataset.deleteObservation); return; }
 
+      const focusPin = event.target.closest("[data-map-pin-focus]");
+      if (focusPin) { focusMapPin(focusPin.dataset.mapPinFocus); return; }
+
+      const deletePin = event.target.closest("[data-delete-map-pin]");
+      if (deletePin) { await deleteMapPin(deletePin.dataset.deleteMapPin); return; }
+
       if (!event.target.closest(".reaction-wrap")) closeReactionMenus();
     });
 
@@ -1046,6 +1228,13 @@
       catch (error) { console.error(error); showToast(error.message || "Couldn't add the note."); }
     });
 
+    qs("#mapPinForm").addEventListener("submit", async event => {
+      if (event.submitter?.value === "cancel") return;
+      event.preventDefault();
+      try { await saveMapPinFromForm(); }
+      catch (error) { console.error(error); showToast(error.message || "Couldn't save that pin."); }
+    });
+
     qs("#localPersonSelect").addEventListener("change", event => {
       state.localPerson = event.target.value;
       localStorage.setItem(LOCAL_PERSON_KEY, state.localPerson);
@@ -1058,7 +1247,7 @@
     qs("#resetLocal").addEventListener("click", async () => {
       if (!confirm("Reset this browser's local Elsewhere preview?")) return;
       const data = await store.reset();
-      Object.assign(state, { workspace: data.workspace, members: data.members, possibilities: data.possibilities, reactions: data.reactions, observations: data.observations });
+      Object.assign(state, { workspace: data.workspace, members: data.members, possibilities: data.possibilities, reactions: data.reactions, observations: data.observations, mapPins: data.map_pins || [] });
       renderAll();
       showToast("Local preview reset.");
     });
