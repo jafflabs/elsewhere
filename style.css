@@ -577,23 +577,38 @@ textarea { min-height: 110px; resize: vertical; }
 }
 @media (min-width: 901px) {
 
+  /* Let all three cat-page headings use the full page width */
+  [data-view-panel="explore"] .page-heading,
+  [data-view-panel="places"] .page-heading,
   [data-view-panel="possibilities"] .page-heading.with-action {
-    display: block;
     max-width: none;
   }
 
+  /* Keep the text from stretching too wide */
+  [data-view-panel="explore"] .page-heading > p,
+  [data-view-panel="places"] .page-heading > p,
+  [data-view-panel="possibilities"] .heading-copy h1,
+  [data-view-panel="possibilities"] .heading-copy p {
+    max-width: 900px;
+  }
+
+  /* Give the cats room on the right */
+  [data-view-panel="explore"] .page-heading.has-cat,
+  [data-view-panel="places"] .page-heading.has-cat,
   [data-view-panel="possibilities"] .heading-copy.has-cat {
-    width: 100%;
     padding-right: 180px;
   }
 
+  /* Now all three cats use the same right edge */
+  [data-view-panel="explore"] .page-cat,
+  [data-view-panel="places"] .page-cat,
   [data-view-panel="possibilities"] .page-cat {
     right: 0;
   }
 
-  [data-view-panel="possibilities"] .heading-copy h1,
-  [data-view-panel="possibilities"] .heading-copy p {
-    max-width: 900px;
+  /* Possibilities layout/button */
+  [data-view-panel="possibilities"] .page-heading.with-action {
+    display: block;
   }
 
   #openAddPossibility {
