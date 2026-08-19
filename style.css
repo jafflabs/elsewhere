@@ -578,16 +578,26 @@ textarea { min-height: 110px; resize: vertical; }
 /* Desktop cat placement cleanup */
 @media (min-width: 901px) {
 
+  /* Explore + Places cats */
   [data-view-panel="explore"] .page-cat,
   [data-view-panel="places"] .page-cat {
     right: -230px;
   }
 
+  /* Banana: align more like the other page cats */
   [data-view-panel="possibilities"] .page-cat {
-    right: 55px;
+    right: -230px;
+  }
+
+  /* Let the heading stack normally so the button sits under the copy */
+  [data-view-panel="possibilities"] .page-heading.with-action {
+    display: block;
+  }
+
+  #openAddPossibility {
+    margin-top: 18px;
   }
 }
-
 /* Keep Save possibility button on one line everywhere */
 #openAddPossibility {
   white-space: nowrap;
