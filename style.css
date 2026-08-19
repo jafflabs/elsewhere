@@ -591,7 +591,7 @@ textarea { min-height: 110px; resize: vertical; }
 
   /* Banana now aligns naturally with the other cats */
   [data-view-panel="possibilities"] .page-cat {
-    right: 0;
+    right: -40;
   }
 
   /* Put Save underneath the intro text */
