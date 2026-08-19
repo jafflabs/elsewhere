@@ -578,16 +578,23 @@ textarea { min-height: 110px; resize: vertical; }
 /* Desktop cat placement cleanup */
 @media (min-width: 901px) {
 
-  /* Explore + Places: use more of the open space on the right */
   [data-view-panel="explore"] .page-cat,
   [data-view-panel="places"] .page-cat {
     right: -230px;
   }
 
-  /* Possibilities: bring Banana closer to the heading */
   [data-view-panel="possibilities"] .page-cat {
     right: 55px;
   }
+}
+
+/* Keep Save possibility button on one line everywhere */
+#openAddPossibility {
+  white-space: nowrap;
+  min-width: max-content;
+  padding: 13px 18px;
+  line-height: 1;
+  align-self: center;
 }
 @media (max-width: 640px) {
   .hero-logo {
