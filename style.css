@@ -557,7 +557,7 @@ textarea { min-height: 110px; resize: vertical; }
 }
 
 .hero-cat {
-  width: 155x;
+  width: 155px;
   height: 155px;
   transform: rotate(-3deg);
 }
@@ -578,22 +578,23 @@ textarea { min-height: 110px; resize: vertical; }
 /* Desktop cat placement cleanup */
 @media (min-width: 901px) {
 
-  /* Explore + Places cats */
+  /* Explore + Places: move cats farther into the open right side */
   [data-view-panel="explore"] .page-cat,
   [data-view-panel="places"] .page-cat {
     right: -230px;
   }
 
-  /* Banana: align more like the other page cats */
-  [data-view-panel="possibilities"] .page-cat {
-    right: -230px;
-  }
-
-  /* Let the heading stack normally so the button sits under the copy */
+  /* Possibilities: make the text area full width */
   [data-view-panel="possibilities"] .page-heading.with-action {
     display: block;
   }
 
+  /* Banana now aligns naturally with the other cats */
+  [data-view-panel="possibilities"] .page-cat {
+    right: 0;
+  }
+
+  /* Put Save underneath the intro text */
   #openAddPossibility {
     margin-top: 18px;
   }
