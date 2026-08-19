@@ -1144,6 +1144,11 @@
 
   function wireEvents() {
     document.addEventListener("click", async event => {
+      const closeDialogButton = event.target.closest("[data-close-dialog]");
+      if (closeDialogButton) {
+      closeDialogButton.closest("dialog")?.close();
+      return;
+    }
       const nav = event.target.closest("[data-view]");
       if (nav) { navigate(nav.dataset.view); return; }
 
