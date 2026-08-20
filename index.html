@@ -161,7 +161,7 @@
 
     <section class="view" data-view-panel="explore">
       <div class="page-heading has-cat">
-        <img src="assets/perez.jpg" class="cat-easter page-cat" alt="Illustrated Perez, a short-haired black cat" title="Purrez would like a murder to solve." />
+        <img src="assets/perez.jpg" class="cat-easter page-cat" alt="Illustrated Purrez, a short-haired black cat" title="Purrez would like a murder to solve." />
         <span class="eyebrow">Search studio</span>
         <h1>Explore without rebuilding the search every time.</h1>
         <p>Choose whose thread we're following, what kind of possibility, and where. Elsewhere builds several useful searches from the combination.</p>
@@ -235,7 +235,7 @@
 
     <section class="view" data-view-panel="map">
       <div class="page-heading map-heading">
-        <span class="eyebrow">Shared pinboard</span>
+        <span class="eyebrow">SupaMap · shared pinboard</span>
         <h1>Put a pin in it.</h1>
         <p>Click anywhere that catches your attention. The pin stays here for both of us, even if all we know right now is “huh… maybe.”</p>
       </div>
@@ -245,22 +245,51 @@
           <div class="map-board-topline">
             <div>
               <strong>Our Elsewhere map</strong>
-              <span>Click the map to drop a pin. Drag and zoom as much as you want.</span>
+              <span>Search for somewhere, or click the map to drop a pin. Drag and zoom as much as you want.</span>
             </div>
             <span id="mapPinCount" class="map-pin-count">0 pins</span>
           </div>
+
+          <div class="map-search-panel" aria-label="Search the map">
+            <div class="map-search-row">
+              <input id="mapSearchInput" type="search" placeholder="Search town, city, ZIP or address…" autocomplete="off" />
+              <button id="mapSearchBtn" class="primary" type="button">Search map</button>
+            </div>
+            <div id="mapSearchResults" class="geocode-results" aria-live="polite"></div>
+            <small class="map-search-credit">Location search powered by OpenStreetMap.</small>
+          </div>
+
           <div class="map-cork-frame">
             <div id="elsewhereMap" aria-label="Interactive map of the Northeast United States"></div>
           </div>
         </section>
 
         <aside class="map-side">
+          <section class="panel map-filter-panel">
+            <span class="eyebrow">SupaMap filters</span>
+            <h3>What do we want to see?</h3>
+            <div id="mapCategoryFilters" class="map-filter-grid" aria-label="Pin type filters"></div>
+            <div class="map-filter-divider"></div>
+            <div class="map-audience-filters" aria-label="Audience filters">
+              <label><input type="checkbox" data-map-audience-filter="Brad" checked /> <span class="audience-key brad"></span> Brad</label>
+              <label><input type="checkbox" data-map-audience-filter="Sam" checked /> <span class="audience-key sam"></span> Sam</label>
+              <label><input type="checkbox" data-map-audience-filter="Both" checked /> <span class="audience-key both"></span> Both</label>
+            </div>
+          </section>
+
+          <section class="panel map-context-panel">
+            <span class="eyebrow">Useful context</span>
+            <h3>Sam's VA access</h3>
+            <p>Open the official VA locator to check medical centers and outpatient clinics around anywhere we're considering.</p>
+            <a class="map-context-link" href="https://www.va.gov/find-locations/?facilityType=health" target="_blank" rel="noopener noreferrer">Find VA care ↗</a>
+          </section>
+
           <section class="panel map-crew-panel">
             <span class="eyebrow">Map crew</span>
             <h3>The entire relocation committee</h3>
             <div class="map-crew" aria-label="Henry, Purrez, Banana and Nadja">
               <figure title="Henry: senior comfort consultant."><img src="assets/henry2.png" loading="lazy" alt="Illustrated Henry" /><figcaption>Henry</figcaption></figure>
-              <figure title="Purrez: cautious regional analyst."><img src="assets/perez2.png" loading="lazy" alt="Illustrated Perez" /><figcaption>Purrez</figcaption></figure>
+              <figure title="Purrez: cautious regional analyst."><img src="assets/perez2.png" loading="lazy" alt="Illustrated Purrez" /><figcaption>Purrez</figcaption></figure>
               <figure title="Banana: relentlessly pro-adventure."><img src="assets/banana2.png" loading="lazy" alt="Illustrated Banana" /><figcaption>Banana</figcaption></figure>
               <figure title="Nadja ‘Baby’: first to investigate everything."><img src="assets/nadja2.png" loading="lazy" alt="Illustrated Nadja Baby" /><figcaption>Baby</figcaption></figure>
             </div>
@@ -308,7 +337,7 @@
         <article class="panel">
           <span class="eyebrow">Backup</span>
           <h3>Export workspace</h3>
-          <p>Download possibilities, reactions, observations, map pins, place keys, and workspace metadata.</p>
+          <p>Download possibilities, reactions, observations, map pins, map links, place keys, and workspace metadata.</p>
           <div class="button-stack">
             <button id="exportJson" class="primary" type="button">Export JSON</button>
             <button id="exportCsv" class="secondary" type="button">Export possibilities CSV</button>
@@ -375,26 +404,45 @@
     <form method="dialog" class="modal-card" id="mapPinForm">
       <div class="modal-heading">
         <div>
-          <span class="eyebrow">Stab in a pin!</span>
-          <h2>What caught our eye here?</h2>
+          <span class="eyebrow">SupaMap</span>
+          <h2 id="mapPinDialogTitle">What caught our eye here?</h2>
         </div>
-        <button class="icon-button" value="cancel" type="submit" formnovalidate aria-label="Close">×</button>
+        <button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button>
       </div>
 
-      <p class="map-pin-coordinates" id="mapPinCoordinates"></p>
-      <input id="mapPinLatitude" type="hidden" />
-      <input id="mapPinLongitude" type="hidden" />
+      <input id="mapPinPossibilityId" type="hidden" />
+      <div id="mapPinSource" class="map-pin-source hidden"></div>
 
       <div class="form-grid">
-        <label class="span-2"><span>Place / pin name</span><input id="mapPinTitle" required placeholder="Brattleboro, VT / that lake / somewhere near Portland…" /></label>
-        <label><span>For</span><select id="mapPinAudience" required><option>Both</option><option>Brad</option><option>Sam</option></select></label>
-        <label><span>Region <small>(optional)</small></span><select id="mapPinRegion"><option value="">No region attached</option></select></label>
-        <label class="span-2"><span>Why did we pin it? <small>(optional)</small></span><textarea id="mapPinNotes" placeholder="Cute town, job nearby, house we saw, worth a scouting stop…"></textarea></label>
+        <label id="mapPinExistingWrap" class="span-2 hidden">
+          <span>Already have a pin for this place?</span>
+          <select id="mapPinExisting"><option value="">Create a new pin</option></select>
+          <small>Attach this saved possibility to an existing geographic pin instead of stacking another marker on top of it.</small>
+        </label>
+
+        <label class="span-2 map-pin-new-only">
+          <span>Search location</span>
+          <div class="map-search-row compact">
+            <input id="mapPinSearchInput" type="search" placeholder="Town, city, ZIP or address…" autocomplete="off" />
+            <button id="mapPinSearchBtn" class="secondary" type="button">Find</button>
+          </div>
+          <div id="mapPinSearchResults" class="geocode-results compact" aria-live="polite"></div>
+        </label>
+
+        <p class="map-pin-coordinates span-2 map-pin-new-only" id="mapPinCoordinates">Choose a search result or click directly on the map.</p>
+        <input id="mapPinLatitude" type="hidden" />
+        <input id="mapPinLongitude" type="hidden" />
+
+        <label class="span-2 map-pin-new-only"><span>Place / pin name</span><input id="mapPinTitle" required placeholder="Brattleboro, VT / that lake / somewhere near Portland…" /></label>
+        <label class="map-pin-new-only"><span>What kind?</span><select id="mapPinCategory" required></select></label>
+        <label class="map-pin-new-only"><span>For</span><select id="mapPinAudience" required><option>Both</option><option>Brad</option><option>Sam</option></select></label>
+        <label class="span-2 map-pin-new-only"><span>Region <small>(optional)</small></span><select id="mapPinRegion"><option value="">No region attached</option></select></label>
+        <label class="span-2 map-pin-new-only"><span>Why did we pin it? <small>(optional)</small></span><textarea id="mapPinNotes" placeholder="Cute town, job nearby, house we saw, worth a scouting stop…"></textarea></label>
       </div>
 
       <div class="modal-actions">
         <button class="secondary" type="button" data-close-dialog>Cancel</button>
-        <button class="primary" value="default" type="submit">Stab a pin in it!</button>
+        <button id="saveMapPinBtn" class="primary" value="default" type="submit">Stab a pin in it!</button>
       </div>
     </form>
   </dialog>

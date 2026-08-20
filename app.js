@@ -3,6 +3,27 @@
 
   const CONFIG = window.ELSEWHERE_CONFIG;
   const TYPES = ["Job", "Employer", "Organization", "Place", "Property", "Resource", "Credential", "Trip idea", "Other"];
+  const MAP_CATEGORIES = [
+    { key: "job", label: "Job", symbol: "💼" },
+    { key: "home", label: "Home / property", symbol: "⌂" },
+    { key: "medical", label: "Medical", symbol: "✚" },
+    { key: "airport", label: "Airport", symbol: "✈" },
+    { key: "place", label: "Place / town", symbol: "★" },
+    { key: "organization", label: "Employer / organization", symbol: "▦" },
+    { key: "outdoors", label: "Outdoors / recreation", symbol: "🌲" },
+    { key: "other", label: "Other", symbol: "•" }
+  ];
+  const POSSIBILITY_MAP_CATEGORY = {
+    Job: "job",
+    Employer: "organization",
+    Organization: "organization",
+    Place: "place",
+    Property: "home",
+    "Trip idea": "place",
+    Resource: "other",
+    Credential: "other",
+    Other: "other"
+  };
   const POSITIVE_REACTIONS = new Set(["nah_yeah", "yeah_nah_yeah", "love"]);
   const LOCAL_KEY = "elsewhere_local_v1";
   const LOCAL_PERSON_KEY = "elsewhere_local_person";
@@ -20,6 +41,9 @@
     reactions: [],
     observations: [],
     mapPins: [],
+    mapPinLinks: [],
+    mapSearchResults: [],
+    pinSearchResults: [],
     localPerson: localStorage.getItem(LOCAL_PERSON_KEY) || "Brad",
     selectedSearchPerson: "Brad",
     selectedLensKey: null,
@@ -131,7 +155,8 @@
         possibilities: [],
         reactions: [],
         observations: [],
-        map_pins: []
+        map_pins: [],
+        map_pin_links: []
       };
     }
 
@@ -139,7 +164,12 @@
       try {
         const parsed = JSON.parse(localStorage.getItem(LOCAL_KEY));
         if (!parsed) return this.fresh();
-        return { ...this.fresh(), ...parsed, map_pins: Array.isArray(parsed.map_pins) ? parsed.map_pins : [] };
+        return {
+          ...this.fresh(),
+          ...parsed,
+          map_pins: Array.isArray(parsed.map_pins) ? parsed.map_pins : [],
+          map_pin_links: Array.isArray(parsed.map_pin_links) ? parsed.map_pin_links : []
+        };
       } catch {
         return this.fresh();
       }
@@ -161,6 +191,7 @@
     async deletePossibility(id) {
       this.state.possibilities = this.state.possibilities.filter(x => x.id !== id);
       this.state.reactions = this.state.reactions.filter(x => x.possibility_id !== id);
+      this.state.map_pin_links = this.state.map_pin_links.filter(x => x.possibility_id !== id);
       this.write();
     }
 
@@ -190,8 +221,18 @@
       return saved;
     }
 
+    async addMapPinLink(pinId, possibilityId) {
+      const existing = this.state.map_pin_links.find(x => x.possibility_id === possibilityId);
+      if (existing) return existing;
+      const saved = { id: uid(), pin_id: pinId, possibility_id: possibilityId, workspace_id: this.state.workspace.id, created_by: currentUserId(), created_at: new Date().toISOString() };
+      this.state.map_pin_links.unshift(saved);
+      this.write();
+      return saved;
+    }
+
     async deleteMapPin(id) {
       this.state.map_pins = this.state.map_pins.filter(x => x.id !== id);
+      this.state.map_pin_links = this.state.map_pin_links.filter(x => x.pin_id !== id);
       this.write();
     }
 
@@ -264,20 +305,22 @@
     }
 
     async load(workspaceId) {
-      const [membersRes, possibilitiesRes, reactionsRes, observationsRes, mapPinsRes] = await Promise.all([
+      const [membersRes, possibilitiesRes, reactionsRes, observationsRes, mapPinsRes, mapPinLinksRes] = await Promise.all([
         this.client.from("workspace_members").select("user_id,role,profiles(display_name)").eq("workspace_id", workspaceId),
         this.client.from("possibilities").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
         this.client.from("reactions").select("*").eq("workspace_id", workspaceId),
         this.client.from("observations").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
-        this.client.from("map_pins").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false })
+        this.client.from("map_pins").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
+        this.client.from("map_pin_links").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false })
       ]);
-      [membersRes, possibilitiesRes, reactionsRes, observationsRes, mapPinsRes].forEach(result => { if (result.error) throw result.error; });
+      [membersRes, possibilitiesRes, reactionsRes, observationsRes, mapPinsRes, mapPinLinksRes].forEach(result => { if (result.error) throw result.error; });
       return {
         members: membersRes.data.map(m => ({ user_id: m.user_id, role: m.role, display_name: m.profiles?.display_name || "Member" })),
         possibilities: possibilitiesRes.data || [],
         reactions: reactionsRes.data || [],
         observations: observationsRes.data || [],
-        map_pins: mapPinsRes.data || []
+        map_pins: mapPinsRes.data || [],
+        map_pin_links: mapPinLinksRes.data || []
       };
     }
 
@@ -324,6 +367,13 @@
       return data;
     }
 
+    async addMapPinLink(pinId, possibilityId) {
+      const payload = { workspace_id: state.workspace.id, pin_id: pinId, possibility_id: possibilityId, created_by: state.user.id };
+      const { data, error } = await this.client.from("map_pin_links").insert(payload).select().single();
+      if (error) throw error;
+      return data;
+    }
+
     async deleteMapPin(id) {
       const { error } = await this.client.from("map_pins").delete().eq("id", id);
       if (error) throw error;
@@ -334,6 +384,7 @@
   let elsewhereMap = null;
   let mapPinLayer = null;
   const mapMarkers = new Map();
+  let lastGeocodeAt = 0;
 
   function supabaseConfigured() {
     const { url, publishableKey } = CONFIG.supabase || {};
@@ -383,6 +434,7 @@
     state.reactions = data.reactions;
     state.observations = data.observations;
     state.mapPins = data.map_pins || [];
+    state.mapPinLinks = data.map_pin_links || [];
     updateModeUI();
   }
 
@@ -438,6 +490,7 @@
     state.reactions = data.reactions;
     state.observations = data.observations;
     state.mapPins = data.map_pins || [];
+    state.mapPinLinks = data.map_pin_links || [];
   }
 
   function clearSharedState() {
@@ -449,6 +502,7 @@
     state.reactions = [];
     state.observations = [];
     state.mapPins = [];
+    state.mapPinLinks = [];
     updateModeUI();
   }
 
@@ -470,6 +524,8 @@
     qs("#mapPinRegion").insertAdjacentHTML("beforeend", regionOptions);
     qs("#possibilityType").innerHTML = TYPES.map(x => `<option>${escapeHtml(x)}</option>`).join("");
     qs("#filterType").insertAdjacentHTML("beforeend", TYPES.map(x => `<option>${escapeHtml(x)}</option>`).join(""));
+    qs("#mapPinCategory").innerHTML = MAP_CATEGORIES.map(x => `<option value="${escapeHtml(x.key)}">${escapeHtml(x.symbol)} ${escapeHtml(x.label)}</option>`).join("");
+    qs("#mapCategoryFilters").innerHTML = MAP_CATEGORIES.map(x => `<label><input type="checkbox" data-map-category-filter="${escapeHtml(x.key)}" checked /> <span>${escapeHtml(x.symbol)}</span> ${escapeHtml(x.label)}</label>`).join("");
     updateLensSelect();
   }
 
@@ -635,7 +691,10 @@
                 ${mine ? `<button type="button" data-clear-reaction="${escapeHtml(item.id)}">Clear reaction</button>` : ""}
               </div>
             </div>
-            <button class="delete-mini" data-delete-possibility="${escapeHtml(item.id)}" type="button">Remove</button>
+            <div class="card-action-right">
+              ${mapLinkForPossibility(item.id) ? `<button class="map-link-button" data-view-possibility-map="${escapeHtml(item.id)}" type="button">📍 View on map</button>` : `<button class="map-link-button" data-add-possibility-map="${escapeHtml(item.id)}" type="button">📌 Add to map</button>`}
+              <button class="delete-mini" data-delete-possibility="${escapeHtml(item.id)}" type="button">Remove</button>
+            </div>
           </div>
         </article>`;
     }).join("");
@@ -676,6 +735,7 @@
     await store.deletePossibility(id);
     state.possibilities = state.possibilities.filter(x => x.id !== id);
     state.reactions = state.reactions.filter(x => x.possibility_id !== id);
+    state.mapPinLinks = state.mapPinLinks.filter(x => x.possibility_id !== id);
     renderAll();
     showToast("Removed.");
   }
@@ -759,14 +819,64 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Shared map / pinboard
+  // SupaMap / shared pinboard
   // ---------------------------------------------------------------------------
 
-  function mapPinIcon(audience) {
+  function mapCategoryDefinition(key) {
+    return MAP_CATEGORIES.find(x => x.key === key) || MAP_CATEGORIES.find(x => x.key === "other");
+  }
+
+  function possibilityMapCategory(type) {
+    return POSSIBILITY_MAP_CATEGORY[type] || "other";
+  }
+
+  function mapLinkForPossibility(possibilityId) {
+    return state.mapPinLinks.find(link => link.possibility_id === possibilityId) || null;
+  }
+
+  function linkedPossibilitiesForPin(pinId) {
+    const ids = new Set(state.mapPinLinks.filter(link => link.pin_id === pinId).map(link => link.possibility_id));
+    return state.possibilities.filter(item => ids.has(item.id));
+  }
+
+  function pinCategorySet(pin) {
+    const categories = new Set();
+    if (pin.category) categories.add(pin.category);
+    linkedPossibilitiesForPin(pin.id).forEach(item => categories.add(possibilityMapCategory(item.type)));
+    if (!categories.size) categories.add("place");
+    return categories;
+  }
+
+  function pinAudienceSet(pin) {
+    const audiences = new Set();
+    if (pin.audience) audiences.add(pin.audience);
+    linkedPossibilitiesForPin(pin.id).forEach(item => audiences.add(item.audience || "Both"));
+    if (!audiences.size) audiences.add("Both");
+    return audiences;
+  }
+
+  function pinDisplayCategory(pin) {
+    const categories = [...pinCategorySet(pin)];
+    if (categories.length === 1) return categories[0];
+    return "mixed";
+  }
+
+  function pinDisplayAudience(pin) {
+    const audiences = pinAudienceSet(pin);
+    if (audiences.has("Both") || (audiences.has("Brad") && audiences.has("Sam"))) return "Both";
+    return audiences.has("Sam") ? "Sam" : "Brad";
+  }
+
+  function pinSymbol(pin) {
+    return pinDisplayCategory(pin) === "mixed" ? "✦" : mapCategoryDefinition(pinDisplayCategory(pin)).symbol;
+  }
+
+  function mapPinIcon(pin) {
+    const audience = pinDisplayAudience(pin);
     const tone = audience === "Brad" ? "brad" : audience === "Sam" ? "sam" : "both";
     return window.L.divIcon({
       className: "elsewhere-pin-icon",
-      html: `<div class="pushpin ${tone}"><span class="pushpin-head">✦</span><span class="pushpin-needle"></span></div>`,
+      html: `<div class="pushpin ${tone}"><span class="pushpin-head" aria-hidden="true">${escapeHtml(pinSymbol(pin))}</span><span class="pushpin-needle"></span></div>`,
       iconSize: [38, 48],
       iconAnchor: [19, 46],
       popupAnchor: [0, -42]
@@ -775,14 +885,41 @@
 
   function pinPopupHtml(pin) {
     const region = regionByKey(pin.region_key);
+    const linked = linkedPossibilitiesForPin(pin.id);
+    const displayCategory = pinDisplayCategory(pin);
+    const categoryLabel = displayCategory === "mixed" ? "Mixed possibilities" : mapCategoryDefinition(displayCategory).label;
+    const linkedHtml = linked.length ? `
+      <div class="map-popup-links">
+        <small>${linked.length} saved possibilit${linked.length === 1 ? "y" : "ies"}</small>
+        ${linked.map(item => `<div><span>${escapeHtml(possibilityMapCategory(item.type) === "job" ? "💼" : mapCategoryDefinition(possibilityMapCategory(item.type)).symbol)}</span> ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a>` : escapeHtml(item.title)}</div>`).join("")}
+      </div>` : "";
     return `
       <div class="map-popup">
-        <strong>${escapeHtml(pin.title)}</strong>
-        <span>${escapeHtml(pin.audience)}${region ? ` · ${escapeHtml(region.name)}` : ""}</span>
+        <strong>${escapeHtml(pinSymbol(pin))} ${escapeHtml(pin.title)}</strong>
+        <span>${escapeHtml(pinDisplayAudience(pin))} · ${escapeHtml(categoryLabel)}${region ? ` · ${escapeHtml(region.name)}` : ""}</span>
         ${pin.notes ? `<p>${escapeHtml(pin.notes)}</p>` : ""}
+        ${linkedHtml}
         <small>Pinned by ${escapeHtml(memberName(pin.created_by))}</small>
         <button class="delete-mini" data-delete-map-pin="${escapeHtml(pin.id)}" type="button">Remove pin</button>
       </div>`;
+  }
+
+  function activeMapCategories() {
+    return new Set(qsa("[data-map-category-filter]:checked").map(input => input.dataset.mapCategoryFilter));
+  }
+
+  function activeMapAudiences() {
+    return new Set(qsa("[data-map-audience-filter]:checked").map(input => input.dataset.mapAudienceFilter));
+  }
+
+  function pinMatchesMapFilters(pin) {
+    const categories = activeMapCategories();
+    const audiences = activeMapAudiences();
+    const pinCategories = pinCategorySet(pin);
+    const pinAudiences = pinAudienceSet(pin);
+    const categoryMatch = [...pinCategories].some(category => categories.has(category));
+    const audienceMatch = [...pinAudiences].some(audience => audiences.has(audience)) || (pinAudiences.has("Both") && (audiences.has("Brad") || audiences.has("Sam") || audiences.has("Both")));
+    return categoryMatch && audienceMatch;
   }
 
   function ensureMap() {
@@ -806,73 +943,185 @@
     renderMapPins();
   }
 
+  function existingPinOptions(possibility) {
+    const sorted = [...state.mapPins].sort((a, b) => {
+      const aSame = possibility?.region_key && a.region_key === possibility.region_key ? 0 : 1;
+      const bSame = possibility?.region_key && b.region_key === possibility.region_key ? 0 : 1;
+      return aSame - bSame || String(a.title).localeCompare(String(b.title));
+    });
+    return `<option value="">Create a new pin</option>` + sorted.map(pin => {
+      const region = regionByKey(pin.region_key);
+      return `<option value="${escapeHtml(pin.id)}">${escapeHtml(pin.title)}${region ? ` · ${escapeHtml(region.name)}` : ""}</option>`;
+    }).join("");
+  }
+
+  function updateMapPinExistingMode() {
+    const existingId = qs("#mapPinExisting").value;
+    const usingExisting = Boolean(existingId);
+    qsa(".map-pin-new-only").forEach(el => el.classList.toggle("hidden", usingExisting));
+    qs("#mapPinTitle").required = !usingExisting;
+    qs("#mapPinCategory").required = !usingExisting;
+    qs("#mapPinAudience").required = !usingExisting;
+    qs("#saveMapPinBtn").textContent = usingExisting ? "Attach to this pin" : "Stab a pin in it!";
+  }
+
   function openMapPinDialog(latlng) {
     qs("#mapPinForm").reset();
+    qs("#mapPinPossibilityId").value = "";
+    qs("#mapPinSource").classList.add("hidden");
+    qs("#mapPinExistingWrap").classList.add("hidden");
+    qs("#mapPinExisting").innerHTML = `<option value="">Create a new pin</option>`;
+    qs("#mapPinDialogTitle").textContent = "What caught our eye here?";
     qs("#mapPinLatitude").value = latlng.lat.toFixed(6);
     qs("#mapPinLongitude").value = latlng.lng.toFixed(6);
     qs("#mapPinCoordinates").textContent = `${latlng.lat.toFixed(3)}, ${latlng.lng.toFixed(3)}`;
     qs("#mapPinAudience").value = "Both";
+    qs("#mapPinCategory").value = "place";
     const selectedRegion = state.selectedRegionKey && state.selectedRegionKey !== "new-england" ? state.selectedRegionKey : "";
     qs("#mapPinRegion").value = selectedRegion;
+    qs("#mapPinSearchResults").innerHTML = "";
+    updateMapPinExistingMode();
     qs("#mapPinDialog").showModal();
     setTimeout(() => qs("#mapPinTitle").focus(), 0);
   }
 
+  function openMapPinDialogForPossibility(possibilityId) {
+    const possibility = state.possibilities.find(item => item.id === possibilityId);
+    if (!possibility) return;
+    const region = regionByKey(possibility.region_key);
+    qs("#mapPinForm").reset();
+    qs("#mapPinPossibilityId").value = possibility.id;
+    qs("#mapPinDialogTitle").textContent = "Put this possibility on the map";
+    qs("#mapPinSource").innerHTML = `<strong>${escapeHtml(possibility.title)}</strong><span>${escapeHtml(possibility.type)} · ${escapeHtml(possibility.audience)}</span>`;
+    qs("#mapPinSource").classList.remove("hidden");
+    qs("#mapPinExistingWrap").classList.remove("hidden");
+    qs("#mapPinExisting").innerHTML = existingPinOptions(possibility);
+    qs("#mapPinExisting").value = "";
+    qs("#mapPinLatitude").value = "";
+    qs("#mapPinLongitude").value = "";
+    qs("#mapPinCoordinates").textContent = "Search for the location below, or attach this to an existing pin.";
+    qs("#mapPinTitle").value = possibility.location || region?.name || "";
+    qs("#mapPinCategory").value = possibilityMapCategory(possibility.type);
+    qs("#mapPinAudience").value = possibility.audience || "Both";
+    qs("#mapPinRegion").value = possibility.region_key || "";
+    qs("#mapPinNotes").value = possibility.why_interesting || "";
+    qs("#mapPinSearchInput").value = possibility.location || region?.searchPlace || "";
+    qs("#mapPinSearchResults").innerHTML = "";
+    updateMapPinExistingMode();
+    qs("#mapPinDialog").showModal();
+    setTimeout(() => qs("#mapPinSearchInput").focus(), 0);
+  }
+
   async function saveMapPinFromForm() {
+    const possibilityId = qs("#mapPinPossibilityId").value || null;
+    const existingPinId = possibilityId ? qs("#mapPinExisting").value || null : null;
+
+    if (existingPinId && possibilityId) {
+      const link = await store.addMapPinLink(existingPinId, possibilityId);
+      state.mapPinLinks.unshift(link);
+      if (state.mode === "local") state.mapPinLinks = (await store.load()).map_pin_links || [];
+      qs("#mapPinDialog").close();
+      renderAll();
+      showToast("Possibility attached to the map.");
+      return;
+    }
+
     const record = {
       title: qs("#mapPinTitle").value.trim(),
+      category: qs("#mapPinCategory").value || "place",
       audience: qs("#mapPinAudience").value,
       region_key: qs("#mapPinRegion").value || null,
       notes: qs("#mapPinNotes").value.trim(),
       latitude: Number(qs("#mapPinLatitude").value),
       longitude: Number(qs("#mapPinLongitude").value)
     };
-    if (!record.title || !Number.isFinite(record.latitude) || !Number.isFinite(record.longitude)) return;
+    if (!record.title) return;
+    if (!Number.isFinite(record.latitude) || !Number.isFinite(record.longitude)) {
+      showToast("Choose a location search result first.");
+      return;
+    }
 
     const saved = await store.addMapPin(record);
     state.mapPins.unshift(saved);
-    if (state.mode === "local") state.mapPins = (await store.load()).map_pins || [];
+    if (possibilityId) {
+      const link = await store.addMapPinLink(saved.id, possibilityId);
+      state.mapPinLinks.unshift(link);
+    }
+    if (state.mode === "local") {
+      const localData = await store.load();
+      state.mapPins = localData.map_pins || [];
+      state.mapPinLinks = localData.map_pin_links || [];
+    }
     qs("#mapPinDialog").close();
-    renderMapPins();
-    showToast("Pin dropped.");
+    renderAll();
+    showToast(possibilityId ? "Possibility pinned." : "Pin dropped.");
   }
 
   async function deleteMapPin(id) {
     const pin = state.mapPins.find(x => x.id === id);
     if (!pin) return;
-    if (!confirm(`Remove the pin for “${pin.title}”?`)) return;
+    const linkedCount = linkedPossibilitiesForPin(id).length;
+    const extra = linkedCount ? ` This also removes ${linkedCount} map link${linkedCount === 1 ? "" : "s"}; the saved possibilities themselves stay.` : "";
+    if (!confirm(`Remove the pin for “${pin.title}”?${extra}`)) return;
     await store.deleteMapPin(id);
     state.mapPins = state.mapPins.filter(x => x.id !== id);
-    renderMapPins();
+    state.mapPinLinks = state.mapPinLinks.filter(x => x.pin_id !== id);
+    renderAll();
     showToast("Pin removed.");
+  }
+
+  function revealPinInFilters(pin) {
+    pinCategorySet(pin).forEach(category => {
+      const input = qs(`[data-map-category-filter="${CSS.escape(category)}"]`);
+      if (input) input.checked = true;
+    });
+    pinAudienceSet(pin).forEach(audience => {
+      const input = qs(`[data-map-audience-filter="${CSS.escape(audience)}"]`);
+      if (input) input.checked = true;
+    });
   }
 
   function focusMapPin(id) {
     const pin = state.mapPins.find(x => x.id === id);
     if (!pin) return;
+    revealPinInFilters(pin);
     navigate("map", false);
-    ensureMap();
-    elsewhereMap.setView([Number(pin.latitude), Number(pin.longitude)], Math.max(elsewhereMap.getZoom(), 8));
-    const marker = mapMarkers.get(id);
-    if (marker) marker.openPopup();
+    setTimeout(() => {
+      ensureMap();
+      renderMapPins();
+      elsewhereMap.setView([Number(pin.latitude), Number(pin.longitude)], Math.max(elsewhereMap.getZoom(), 9));
+      const marker = mapMarkers.get(id);
+      if (marker) marker.openPopup();
+    }, 0);
+  }
+
+  function focusPossibilityOnMap(possibilityId) {
+    const link = mapLinkForPossibility(possibilityId);
+    if (!link) return;
+    focusMapPin(link.pin_id);
   }
 
   function renderMapPins() {
     const list = qs("#mapPinList");
     const count = qs("#mapPinCount");
-    if (count) count.textContent = `${state.mapPins.length} pin${state.mapPins.length === 1 ? "" : "s"}`;
+    const visiblePins = state.mapPins.filter(pinMatchesMapFilters);
+    if (count) count.textContent = visiblePins.length === state.mapPins.length
+      ? `${state.mapPins.length} pin${state.mapPins.length === 1 ? "" : "s"}`
+      : `${visiblePins.length} shown · ${state.mapPins.length} total`;
 
     if (list) {
-      if (!state.mapPins.length) {
-        emptyState(list, "The board is blank on purpose. Click the map when somewhere makes either of you curious.");
+      if (!visiblePins.length) {
+        emptyState(list, state.mapPins.length ? "Nothing matches these SupaMap filters." : "The board is blank on purpose. Search or click the map when somewhere makes either of you curious.");
       } else {
-        list.innerHTML = state.mapPins.map(pin => {
+        list.innerHTML = visiblePins.map(pin => {
           const region = regionByKey(pin.region_key);
+          const linkedCount = linkedPossibilitiesForPin(pin.id).length;
+          const audience = pinDisplayAudience(pin);
           return `
             <article class="map-pin-item">
               <button class="map-pin-focus" data-map-pin-focus="${escapeHtml(pin.id)}" type="button">
-                <span class="map-pin-dot ${pin.audience === "Brad" ? "brad" : pin.audience === "Sam" ? "sam" : "both"}"></span>
-                <span><strong>${escapeHtml(pin.title)}</strong><small>${escapeHtml(pin.audience)}${region ? ` · ${escapeHtml(region.name)}` : ""}</small></span>
+                <span class="map-pin-symbol ${audience === "Brad" ? "brad" : audience === "Sam" ? "sam" : "both"}">${escapeHtml(pinSymbol(pin))}</span>
+                <span><strong>${escapeHtml(pin.title)}</strong><small>${escapeHtml(audience)}${region ? ` · ${escapeHtml(region.name)}` : ""}${linkedCount ? ` · ${linkedCount} saved` : ""}</small></span>
               </button>
               <button class="delete-mini" data-delete-map-pin="${escapeHtml(pin.id)}" type="button">Remove</button>
             </article>`;
@@ -883,15 +1132,100 @@
     if (!elsewhereMap || !mapPinLayer) return;
     mapPinLayer.clearLayers();
     mapMarkers.clear();
-    state.mapPins.forEach(pin => {
+    visiblePins.forEach(pin => {
       const lat = Number(pin.latitude);
       const lng = Number(pin.longitude);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-      const marker = window.L.marker([lat, lng], { icon: mapPinIcon(pin.audience), title: pin.title })
-        .bindPopup(pinPopupHtml(pin), { maxWidth: 280 })
+      const marker = window.L.marker([lat, lng], { icon: mapPinIcon(pin), title: pin.title })
+        .bindPopup(pinPopupHtml(pin), { maxWidth: 320 })
         .addTo(mapPinLayer);
       mapMarkers.set(pin.id, marker);
     });
+  }
+
+  async function geocodeSearch(query) {
+    const text = String(query || "").trim();
+    if (!text) return [];
+    const elapsed = Date.now() - lastGeocodeAt;
+    if (elapsed < 1000) await new Promise(resolve => setTimeout(resolve, 1000 - elapsed));
+    lastGeocodeAt = Date.now();
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("limit", "5");
+    url.searchParams.set("addressdetails", "1");
+    url.searchParams.set("accept-language", "en");
+    url.searchParams.set("q", text);
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error("Location search is unavailable right now.");
+    return response.json();
+  }
+
+  function renderGeocodeResults(container, results, mode) {
+    if (!container) return;
+    if (!results.length) {
+      container.innerHTML = `<div class="geocode-empty">No location matches found.</div>`;
+      return;
+    }
+    container.innerHTML = results.map((result, index) => `
+      <button class="geocode-result" type="button" data-${mode}-geocode-index="${index}">
+        <strong>${escapeHtml(result.name || String(result.display_name || "").split(",")[0])}</strong>
+        <span>${escapeHtml(result.display_name || "")}</span>
+      </button>`).join("");
+  }
+
+  async function runMapSearch() {
+    const input = qs("#mapSearchInput");
+    const resultsBox = qs("#mapSearchResults");
+    const query = input.value.trim();
+    if (!query) return;
+    resultsBox.innerHTML = `<div class="geocode-empty">Searching…</div>`;
+    try {
+      state.mapSearchResults = await geocodeSearch(query);
+      renderGeocodeResults(resultsBox, state.mapSearchResults, "map");
+    } catch (error) {
+      console.error(error);
+      resultsBox.innerHTML = `<div class="geocode-empty">Couldn't search locations right now.</div>`;
+    }
+  }
+
+  async function runPinSearch() {
+    const input = qs("#mapPinSearchInput");
+    const resultsBox = qs("#mapPinSearchResults");
+    const query = input.value.trim();
+    if (!query) return;
+    resultsBox.innerHTML = `<div class="geocode-empty">Searching…</div>`;
+    try {
+      state.pinSearchResults = await geocodeSearch(query);
+      renderGeocodeResults(resultsBox, state.pinSearchResults, "pin");
+    } catch (error) {
+      console.error(error);
+      resultsBox.innerHTML = `<div class="geocode-empty">Couldn't search locations right now.</div>`;
+    }
+  }
+
+  function selectMapGeocodeResult(index) {
+    const result = state.mapSearchResults[index];
+    if (!result) return;
+    const lat = Number(result.lat);
+    const lng = Number(result.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    ensureMap();
+    elsewhereMap.setView([lat, lng], 11);
+    qs("#mapSearchResults").innerHTML = "";
+    showToast("Found it. Click the map to pin anything nearby.");
+  }
+
+  function selectPinGeocodeResult(index) {
+    const result = state.pinSearchResults[index];
+    if (!result) return;
+    const lat = Number(result.lat);
+    const lng = Number(result.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    qs("#mapPinLatitude").value = lat.toFixed(6);
+    qs("#mapPinLongitude").value = lng.toFixed(6);
+    qs("#mapPinCoordinates").textContent = `${lat.toFixed(3)}, ${lng.toFixed(3)} · ${result.display_name || "location selected"}`;
+    if (!qs("#mapPinTitle").value.trim()) qs("#mapPinTitle").value = result.name || String(result.display_name || "").split(",")[0];
+    qs("#mapPinSearchResults").innerHTML = "";
   }
 
   // ---------------------------------------------------------------------------
@@ -1001,14 +1335,15 @@
   function exportPayload() {
     return {
       app: "Elsewhere",
-      version: 1,
+      version: 2,
       exported_at: new Date().toISOString(),
       workspace: state.workspace ? { id: state.workspace.id, name: state.workspace.name } : null,
       members: state.members.map(m => ({ user_id: m.user_id, display_name: m.display_name, role: m.role })),
       possibilities: state.possibilities,
       reactions: state.reactions,
       observations: state.observations,
-      map_pins: state.mapPins
+      map_pins: state.mapPins,
+      map_pin_links: state.mapPinLinks
     };
   }
 
@@ -1189,6 +1524,18 @@
       const clearReaction = event.target.closest("[data-clear-reaction]");
       if (clearReaction) { await setReaction(clearReaction.dataset.clearReaction, null); return; }
 
+      const addPossibilityMap = event.target.closest("[data-add-possibility-map]");
+      if (addPossibilityMap) { openMapPinDialogForPossibility(addPossibilityMap.dataset.addPossibilityMap); return; }
+
+      const viewPossibilityMap = event.target.closest("[data-view-possibility-map]");
+      if (viewPossibilityMap) { focusPossibilityOnMap(viewPossibilityMap.dataset.viewPossibilityMap); return; }
+
+      const mapGeocodeResult = event.target.closest("[data-map-geocode-index]");
+      if (mapGeocodeResult) { selectMapGeocodeResult(Number(mapGeocodeResult.dataset.mapGeocodeIndex)); return; }
+
+      const pinGeocodeResult = event.target.closest("[data-pin-geocode-index]");
+      if (pinGeocodeResult) { selectPinGeocodeResult(Number(pinGeocodeResult.dataset.pinGeocodeIndex)); return; }
+
       const deleteP = event.target.closest("[data-delete-possibility]");
       if (deleteP) { await deletePossibility(deleteP.dataset.deletePossibility); return; }
 
@@ -1232,6 +1579,13 @@
       catch (error) { console.error(error); showToast(error.message || "Couldn't add the note."); }
     });
 
+    qsa("[data-map-category-filter], [data-map-audience-filter]").forEach(input => input.addEventListener("change", renderMapPins));
+    qs("#mapSearchBtn").addEventListener("click", runMapSearch);
+    qs("#mapSearchInput").addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); runMapSearch(); } });
+    qs("#mapPinSearchBtn").addEventListener("click", runPinSearch);
+    qs("#mapPinSearchInput").addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); runPinSearch(); } });
+    qs("#mapPinExisting").addEventListener("change", updateMapPinExistingMode);
+
     qs("#mapPinForm").addEventListener("submit", async event => {
       if (event.submitter?.value === "cancel") return;
       event.preventDefault();
@@ -1251,7 +1605,7 @@
     qs("#resetLocal").addEventListener("click", async () => {
       if (!confirm("Reset this browser's local Elsewhere preview?")) return;
       const data = await store.reset();
-      Object.assign(state, { workspace: data.workspace, members: data.members, possibilities: data.possibilities, reactions: data.reactions, observations: data.observations, mapPins: data.map_pins || [] });
+      Object.assign(state, { workspace: data.workspace, members: data.members, possibilities: data.possibilities, reactions: data.reactions, observations: data.observations, mapPins: data.map_pins || [], mapPinLinks: data.map_pin_links || [] });
       renderAll();
       showToast("Local preview reset.");
     });
