@@ -81,7 +81,6 @@ window.ELSEWHERE_CONFIG = {
         ecosystem: "telecommunications network automation OSS optical networking companies"
       }
     ],
-
     Sam: [
       {
         key: "funeral-service",
@@ -118,10 +117,22 @@ window.ELSEWHERE_CONFIG = {
         name: "Professional Communities & Training",
         terms: ["death doula training", "green burial council", "funeral celebrant association", "death positive community"],
         ecosystem: "end of life professional associations training communities"
+      },
+      { 
+        key: "downsizing-estates"
+        name: "Downsizing & Estate Transitions"
+        terms: [
+          "senior move manager", 
+          "downsizing specialist", 
+          "estate sale coordinator", 
+          "estate cleanout specialist", 
+          "estate liquidation", 
+          "home transition specialist"
+        ],
+        ecosystem: "senior move management downsizing estate sales estate cleanouts estate liquidation home transition services"
       }
-    ],
-
-    Us: [
+      ],
+      Us: [
       {
         key: "land-home",
         name: "Home + Land",
