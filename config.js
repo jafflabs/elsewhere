@@ -41,128 +41,129 @@ window.ELSEWHERE_CONFIG = {
     { key: "finger-lakes", name: "Finger Lakes / Rochester", state: "NY", searchPlace: "Rochester New York", note: "Technology, universities, healthcare, and access to rural areas." },
     { key: "scotland", name: "Scotland / UK — long shot", state: "UK", searchPlace: "Scotland United Kingdom", note: "Explore only where sponsorship and work authorization are genuinely realistic." }
   ],
+searchLenses: {
+  Brad: [
+    {
+      key: "architecture-integration",
+      name: "Architecture & Integration",
+      terms: ["solutions architect", "systems architect", "enterprise architect", "systems integration architect"],
+      ecosystem: "enterprise architecture systems integration technology organizations"
+    },
+    {
+      key: "information-knowledge",
+      name: "Information & Knowledge",
+      terms: ["information architect", "knowledge architect", "knowledge engineer", "knowledge management architect"],
+      ecosystem: "knowledge architecture information architecture knowledge engineering companies"
+    },
+    {
+      key: "applied-ai",
+      name: "Applied AI Architecture",
+      terms: ["AI solutions architect", "enterprise AI architect", "AI platform architect", "agentic systems architect"],
+      ecosystem: "applied AI enterprise AI architecture organizations"
+    },
+    {
+      key: "ai-enablement",
+      name: "AI Enablement & Stewardship",
+      terms: ["AI enablement", "responsible AI architect", "AI governance architect", "human centered AI"],
+      ecosystem: "responsible AI human centered AI AI enablement organizations"
+    },
+    {
+      key: "technical-strategy",
+      name: "Technical Strategy",
+      terms: ["technical strategy", "technology strategy architect", "platform strategy", "digital transformation architect"],
+      ecosystem: "technology strategy architecture transformation organizations"
+    },
+    {
+      key: "domain-bridge",
+      name: "Telecom / Domain Bridge",
+      terms: ["telecom solutions architect", "network automation architect", "OSS architect", "network telemetry architect"],
+      ecosystem: "telecommunications network automation OSS optical networking companies"
+    }
+  ],
 
-  searchLenses: {
-    Brad: [
-      {
-        key: "architecture-integration",
-        name: "Architecture & Integration",
-        terms: ["solutions architect", "systems architect", "enterprise architect", "systems integration architect"],
-        ecosystem: "enterprise architecture systems integration technology organizations"
-      },
-      {
-        key: "information-knowledge",
-        name: "Information & Knowledge",
-        terms: ["information architect", "knowledge architect", "knowledge engineer", "knowledge management architect"],
-        ecosystem: "knowledge architecture information architecture knowledge engineering companies"
-      },
-      {
-        key: "applied-ai",
-        name: "Applied AI Architecture",
-        terms: ["AI solutions architect", "enterprise AI architect", "AI platform architect", "agentic systems architect"],
-        ecosystem: "applied AI enterprise AI architecture organizations"
-      },
-      {
-        key: "ai-enablement",
-        name: "AI Enablement & Stewardship",
-        terms: ["AI enablement", "responsible AI architect", "AI governance architect", "human centered AI"],
-        ecosystem: "responsible AI human centered AI AI enablement organizations"
-      },
-      {
-        key: "technical-strategy",
-        name: "Technical Strategy",
-        terms: ["technical strategy", "technology strategy architect", "platform strategy", "digital transformation architect"],
-        ecosystem: "technology strategy architecture transformation organizations"
-      },
-      {
-        key: "domain-bridge",
-        name: "Telecom / Domain Bridge",
-        terms: ["telecom solutions architect", "network automation architect", "OSS architect", "network telemetry architect"],
-        ecosystem: "telecommunications network automation OSS optical networking companies"
-      }
-    ],
-    Sam: [
-      {
-        key: "funeral-service",
-        name: "Funeral Service & Celebrancy",
-        terms: ["funeral celebrant", "certified celebrant funeral", "funeral service", "celebration of life coordinator"],
-        ecosystem: "funeral homes celebrants memorial services"
-      },
-      {
-        key: "green-burial",
-        name: "Green & Natural Burial",
-        terms: ["green burial", "natural burial", "conservation burial", "green cemetery"],
-        ecosystem: "green cemeteries natural burial conservation burial organizations"
-      },
-      {
-        key: "end-of-life",
-        name: "End-of-Life / Death Doula",
-        terms: ["end of life doula", "death doula", "end of life care coordinator", "deathcare educator"],
-        ecosystem: "end of life doula death positive community organizations"
-      },
-      {
-        key: "hospice-grief",
-        name: "Hospice, Bereavement & Grief",
-        terms: ["hospice bereavement", "grief support coordinator", "bereavement specialist", "family support hospice"],
-        ecosystem: "hospice bereavement grief support organizations"
-      },
-      {
-        key: "planning-memorial",
-        name: "Planning & Memorialization",
-        terms: ["end of life planning", "memorial planner", "celebration of life services", "advance care planning"],
-        ecosystem: "end of life planning memorialization community services"
-      },
-      {
-        key: "professional-community",
-        name: "Professional Communities & Training",
-        terms: ["death doula training", "green burial council", "funeral celebrant association", "death positive community"],
-        ecosystem: "end of life professional associations training communities"
-      },
-      { 
-        key: "downsizing-estates"
-        name: "Downsizing & Estate Transitions"
-        terms: [
-          "senior move manager", 
-          "downsizing specialist", 
-          "estate sale coordinator", 
-          "estate cleanout specialist", 
-          "estate liquidation", 
-          "home transition specialist"
-        ],
-        ecosystem: "senior move management downsizing estate sales estate cleanouts estate liquidation home transition services"
-      }
+  Sam: [
+    {
+      key: "funeral-service",
+      name: "Funeral Service & Celebrancy",
+      terms: ["funeral celebrant", "certified celebrant funeral", "funeral service", "celebration of life coordinator"],
+      ecosystem: "funeral homes celebrants memorial services"
+    },
+    {
+      key: "green-burial",
+      name: "Green & Natural Burial",
+      terms: ["green burial", "natural burial", "conservation burial", "green cemetery"],
+      ecosystem: "green cemeteries natural burial conservation burial organizations"
+    },
+    {
+      key: "end-of-life",
+      name: "End-of-Life / Death Doula",
+      terms: ["end of life doula", "death doula", "end of life care coordinator", "deathcare educator"],
+      ecosystem: "end of life doula death positive community organizations"
+    },
+    {
+      key: "hospice-grief",
+      name: "Hospice, Bereavement & Grief",
+      terms: ["hospice bereavement", "grief support coordinator", "bereavement specialist", "family support hospice"],
+      ecosystem: "hospice bereavement grief support organizations"
+    },
+    {
+      key: "planning-memorial",
+      name: "Planning & Memorialization",
+      terms: ["end of life planning", "memorial planner", "celebration of life services", "advance care planning"],
+      ecosystem: "end of life planning memorialization community services"
+    },
+    {
+      key: "professional-community",
+      name: "Professional Communities & Training",
+      terms: ["death doula training", "green burial council", "funeral celebrant association", "death positive community"],
+      ecosystem: "end of life professional associations training communities"
+    },
+    {
+      key: "downsizing-estates",
+      name: "Downsizing & Estate Transitions",
+      terms: [
+        "senior move manager",
+        "downsizing specialist",
+        "estate sale coordinator",
+        "estate cleanout specialist",
+        "estate liquidation",
+        "home transition specialist"
       ],
-      Us: [
-      {
-        key: "land-home",
-        name: "Home + Land",
-        terms: ["homes 3 acres", "rural homes acreage", "small town homes land", "country homes"],
-        ecosystem: "rural housing acreage communities"
-      },
-      {
-        key: "outdoors-community",
-        name: "Outdoors + Community",
-        terms: ["hiking kayaking trails", "small town arts community", "outdoor recreation", "walkable small town"],
-        ecosystem: "outdoor recreation community small towns"
-      },
-      {
-        key: "access",
-        name: "Airports, Healthcare & Access",
-        terms: ["regional airport access", "major hospital", "healthcare systems", "commute to technology jobs"],
-        ecosystem: "airport healthcare regional access"
-      },
-      {
-        key: "climate",
-        name: "Climate & Seasons",
-        terms: ["summer climate", "winter snowfall", "climate normals", "heat humidity"],
-        ecosystem: "climate weather seasonal living"
-      },
-      {
-        key: "scouting",
-        name: "Scouting Trip",
-        terms: ["things to do", "local restaurants", "neighborhood guide", "weekend itinerary"],
-        ecosystem: "visit explore local community"
-      }
-    ]
-  }
+      ecosystem: "senior move management downsizing estate sales estate cleanouts estate liquidation home transition services"
+    }
+  ],
+
+  Us: [
+    {
+      key: "land-home",
+      name: "Home + Land",
+      terms: ["homes 3 acres", "rural homes acreage", "small town homes land", "country homes"],
+      ecosystem: "rural housing acreage communities"
+    },
+    {
+      key: "outdoors-community",
+      name: "Outdoors + Community",
+      terms: ["hiking kayaking trails", "small town arts community", "outdoor recreation", "walkable small town"],
+      ecosystem: "outdoor recreation community small towns"
+    },
+    {
+      key: "access",
+      name: "Airports, Healthcare & Access",
+      terms: ["regional airport access", "major hospital", "healthcare systems", "commute to technology jobs"],
+      ecosystem: "airport healthcare regional access"
+    },
+    {
+      key: "climate",
+      name: "Climate & Seasons",
+      terms: ["summer climate", "winter snowfall", "climate normals", "heat humidity"],
+      ecosystem: "climate weather seasonal living"
+    },
+    {
+      key: "scouting",
+      name: "Scouting Trip",
+      terms: ["things to do", "local restaurants", "neighborhood guide", "weekend itinerary"],
+      ecosystem: "visit explore local community"
+    }
+  ]
+}
 };
